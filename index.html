@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laboratorio de Cinemática 603</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Laboratorio de Cinemática        Grupo: 603</h1>
+    <nav id="menu" aria-label="Secciones">
+      <button data-sec="intro" class="activo">Introducción</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button data-sec="mru">MRU</button>
+      <button data-sec="mua">MUA</button>
+      <button data-sec="caida">Caída libre</button>
+      <button data-sec="parabolico">Tiro parabólico</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button data-sec="ejercicios">Ejercicios</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- INTRODUCCIÓN -->
+    <section id="intro" class="seccion visible">
+      <h2>¿Qué es la física?</h2>
+      <p>La física estudia la materia, la energía y las leyes que rigen cómo se mueven y cambian las cosas. Una de sus ramas más básicas es la <strong>cinemática</strong>: describe el movimiento sin preguntarse por sus causas.</p>
+      <h3>Magnitudes que vas a usar</h3>
+      <dl>
+        <dt>Distancia (d)</dt><dd>Cuánto se desplazó un cuerpo, en metros (m).</dd>
+        <dt>Tiempo (t)</dt><dd>Cuánto dura el movimiento, en segundos (s).</dd>
+        <dt>Velocidad (v)</dt><dd>Qué tan rápido cambia la posición, en m/s.</dd>
+        <dt>Aceleración (a)</dt><dd>Qué tan rápido cambia la velocidad, en m/s².</dd>
+        <dt>Gravedad (g)</dt><dd>Aceleración constante con la que la Tierra atrae los cuerpos hacia abajo: 9.81 m/s². Rige la caída libre y el tiro parabólico.</dd>
+        <dt>Ángulo (θ)</dt><dd>Inclinación del lanzamiento respecto a la horizontal, en grados (°). Con él se separa la velocidad inicial en sus componentes: vx = v0·cosθ y vy = v0·senθ.</dd>
+      </dl>
+      <h3>Tipos de movimiento</h3>
+      <dl>
+        <dt>MRU</dt><dd>Movimiento rectilíneo uniforme: velocidad constante, aceleración cero.</dd>
+        <dt>MUA</dt><dd>Movimiento uniformemente acelerado: la aceleración es constante.</dd>
+        <dt>Caída libre</dt><dd>Caso particular del MUA: la aceleración siempre es la gravedad y, si el cuerpo se deja caer, v0 = 0.</dd>
+        <dt>Tiro parabólico</dt><dd>Combina un MRU en horizontal (x = vx·t) con una caída libre en vertical.</dd>
+      </dl>
+      <h3>Elige una sección</h3>
+      <div class="tarjetas">
+        <button class="tarjeta" data-ir="mru"><strong>MRU</strong><span>Velocidad constante, sin aceleración.</span><code>d = v · t</code></button>
+        <button class="tarjeta" data-ir="mua"><strong>MUA</strong><span>Aceleración constante.</span><code>vf = v0 + a·t</code><code>d = v0·t + ½·a·t²</code></button>
+        <button class="tarjeta" data-ir="caida"><strong>Caída libre</strong><span>MUA con a = g. Si se deja caer, v0 = 0.</span><code>vf = g·t</code><code>h = ½·g·t²</code></button>
+        <button class="tarjeta" data-ir="parabolico"><strong>Tiro parabólico</strong><span>Lanzamiento con ángulo bajo la gravedad.</span><code>x = vx·t</code><code>y = h0 + vy·t − ½·g·t²</code></button>
+        <button class="tarjeta" data-ir="ejercicios"><strong>Ejercicios</strong><span>Problemas completos con dibujo, gráficas y tabla.</span><code>Cañón y tanque</code></button>
+      </div>
+    </section>
+
+    <!-- MRU -->
+    <section id="mru" class="seccion">
+      <h2>Movimiento Rectilíneo Uniforme</h2>
+      <p>Llena dos campos y deja uno vacío. El simulador calcula el que falta.</p>
+      <div class="campos">
+        <label>Distancia (m) <input id="mru-d" type="number" step="any"></label>
+        <label>Velocidad (m/s) <input id="mru-v" type="number" step="any"></label>
+        <label>Tiempo (s) <input id="mru-t" type="number" step="any"></label>
+      </div>
+      <div class="acciones"><button class="primario" id="mru-calc">Calcular</button><button class="secundario" data-limpiar="mru">Limpiar</button></div>
+      <canvas id="mru-anim" width="800" height="240" aria-label="Animación del movimiento" hidden></canvas>
+      <div class="resultado" id="mru-res"></div>
+      <div class="graficas" id="mru-graf" hidden>
+        <canvas id="mru-g1" width="400" height="270" aria-label="Gráfica de posición contra tiempo"></canvas>
+        <canvas id="mru-g2" width="400" height="270" aria-label="Gráfica de velocidad contra tiempo"></canvas>
+      </div>
+    </section>
+
+    <!-- MUA -->
+    <section id="mua" class="seccion">
+      <h2>Movimiento Uniformemente Acelerado</h2>
+      <p>Llena al menos tres campos. El simulador calcula los demás.</p>
+      <p class="formulas"><code>vf = v0 + a·t</code><br><code>d = v0·t + ½·a·t²</code><br><code>vf² = v0² + 2·a·d</code></p>
+      <div class="campos">
+        <label>Velocidad inicial v0 (m/s) <input id="mua-v0" type="number" step="any"></label>
+        <label>Velocidad final vf (m/s) <input id="mua-vf" type="number" step="any"></label>
+        <label>Aceleración a (m/s²) <input id="mua-a" type="number" step="any"></label>
+        <label>Tiempo t (s) <input id="mua-t" type="number" step="any"></label>
+        <label>Distancia d (m) <input id="mua-d" type="number" step="any"></label>
+      </div>
+      <div class="acciones"><button class="primario" id="mua-calc">Calcular</button><button class="secundario" data-limpiar="mua">Limpiar</button></div>
+      <canvas id="mua-anim" width="800" height="240" aria-label="Animación del movimiento" hidden></canvas>
+      <div class="resultado" id="mua-res"></div>
+      <div class="graficas" id="mua-graf" hidden>
+        <canvas id="mua-g1" width="400" height="270" aria-label="Gráfica de posición contra tiempo"></canvas>
+        <canvas id="mua-g2" width="400" height="270" aria-label="Gráfica de velocidad contra tiempo"></canvas>
+      </div>
+    </section>
+
+    <!-- CAÍDA LIBRE -->
+    <section id="caida" class="seccion">
+      <h2>Caída libre</h2>
+      <p>Es un MUA donde la aceleración es la gravedad. Aquí el sentido positivo es hacia abajo: si dejas caer el cuerpo, v0 = 0; si lo lanzas hacia abajo, v0 es positiva, y si lo lanzas hacia arriba, negativa. Llena la gravedad y al menos dos datos más; el simulador calcula los demás.</p>
+      <p class="formulas"><code>vf = v0 + g·t</code><br><code>h = v0·t + ½·g·t²</code><br><code>vf² = v0² + 2·g·h</code></p>
+      <div class="campos">
+        <label>Altura recorrida h (m) <input id="cl-d" type="number" step="any"></label>
+        <label>Tiempo de caída t (s) <input id="cl-t" type="number" step="any"></label>
+        <label>Velocidad inicial v0 (m/s) <input id="cl-v0" type="number" step="any" value="0"></label>
+        <label>Velocidad final vf (m/s) <input id="cl-vf" type="number" step="any"></label>
+        <label>Gravedad g (m/s²), obligatoria <input id="cl-g" type="number" step="any" value="9.81"></label>
+      </div>
+      <div class="acciones"><button class="primario" id="cl-calc">Calcular</button><button class="secundario" id="cl-limpiar">Limpiar</button></div>
+      <canvas id="cl-anim" width="800" height="420" aria-label="Animación de la caída del cuerpo" hidden></canvas>
+      <div class="resultado" id="cl-res"></div>
+      <div class="graficas" id="cl-graf" hidden>
+        <canvas id="cl-g1" width="400" height="270" aria-label="Distancia recorrida contra tiempo"></canvas>
+        <canvas id="cl-g2" width="400" height="270" aria-label="Velocidad contra tiempo"></canvas>
+      </div>
+    </section>
+
+    <!-- TIRO PARABÓLICO -->
+    <section id="parabolico" class="seccion">
+      <h2>Tiro parabólico</h2>
+      <p>Ingresa los datos del lanzamiento y mira la trayectoria.</p>
+      <p class="formulas"><code>vx = v0·cosθ &nbsp;&nbsp; vy = v0·senθ</code><br><code>x = vx·t</code><br><code>y = h0 + vy·t − ½·g·t²</code></p>
+      <div class="campos">
+        <label>Velocidad inicial (m/s) <input id="tp-v0" type="number" step="any" value="20"></label>
+        <label>Ángulo (°, de 0 a 90) <input id="tp-ang" type="number" step="any" value="45"></label>
+        <label>Altura inicial (m) <input id="tp-h0" type="number" step="any" value="0"></label>
+        <label>Gravedad (m/s²) <input id="tp-g" type="number" step="any" value="9.81"></label>
+      </div>
+      <div class="acciones"><button class="primario" id="tp-calc">Lanzar</button></div>
+      <canvas id="tp-canvas" width="800" height="360" aria-label="Trayectoria del proyectil"></canvas>
+      <div class="resultado" id="tp-res"></div>
+      <div class="graficas" id="tp-graf" hidden>
+        <canvas id="tp-g1" width="400" height="270" aria-label="Gráfica de altura contra tiempo"></canvas>
+        <canvas id="tp-g2" width="400" height="270" aria-label="Gráfica de velocidad vertical contra tiempo"></canvas>
+      </div>
+    </section>
+
+    <!-- EJERCICIOS: lista para elegir. Para agregar otro, copia una tarjeta y crea su sección con data-menu="ejercicios" -->
+    <section id="ejercicios" class="seccion">
+      <h2>Ejercicios</h2>
+      <p>Elige un ejercicio. Al abrirlo verás el dibujo animado, los campos para tus datos, las gráficas y una tabla de valores.</p>
+      <div class="tarjetas">
+        <button class="tarjeta" data-ir="ej-tanque"><strong>Cañón y tanque</strong><span>Un proyectil contra un tanque que se aproxima: calcula los dos ángulos de impacto.</span><code>(v0·cosθ + vt)·2·v0·senθ / g = d</code></button>
+      </div>
+    </section>
+
+    <!-- EJERCICIO: CAÑÓN Y TANQUE -->
+    <section id="ej-tanque" class="seccion" data-menu="ejercicios">
+      <button class="secundario volver" data-ir="ejercicios">← Volver a ejercicios</button>
+      <h2>Cañón y tanque: ángulos de impacto</h2>
+      <p>Un cañón dispara un proyectil contra un tanque que avanza hacia él en línea recta con velocidad constante. El impacto ocurre cuando lo que avanza el proyectil (su alcance) más lo que avanza el tanque durante el vuelo suma la distancia inicial:</p>
+      <p><code>(v0·cosθ + v_tanque) · 2·v0·senθ / g = d</code></p>
+      <p>Llena la gravedad y tres de los otros cuatro campos; el ejercicio calcula el que dejes vacío. Si dejas vacío el ángulo, obtienes los dos ángulos posibles. Si llenas los cinco, comprueba si el disparo acierta.</p>
+      <div class="campos">
+        <label>Velocidad del proyectil v0 (m/s) <input id="et-v0" type="number" step="any"></label>
+        <label>Ángulo del cañón θ (°) <input id="et-ang" type="number" step="any"></label>
+        <label>Velocidad del tanque (m/s) <input id="et-vt" type="number" step="any"></label>
+        <label>Distancia inicial d (m) <input id="et-d" type="number" step="any"></label>
+        <label>Gravedad g (m/s²), obligatoria <input id="et-g" type="number" step="any"></label>
+      </div>
+      <div class="acciones">
+        <button class="primario" id="et-calc">Calcular</button>
+        <button class="secundario" id="et-ejemplo">Cargar ejemplo</button>
+        <button class="secundario" id="et-limpiar">Limpiar</button>
+      </div>
+      <canvas id="et-anim" width="900" height="440" aria-label="Simulación del cañón y el tanque" hidden></canvas>
+      <div class="resultado" id="et-res"></div>
+      <div class="graficas" id="et-graf" hidden>
+        <canvas id="et-g1" width="420" height="290" aria-label="Altura contra tiempo"></canvas>
+        <canvas id="et-g2" width="420" height="290" aria-label="Posición horizontal contra tiempo"></canvas>
+      </div>
+      <div id="et-tabla"></div>
+    </section>
+  </main>
+
+  <footer>
+    <strong>Hecho por:</strong>
+    <span>Alarcon Lucas Julio Yamil</span>
+    <span>Flores Arias Maximiliano</span>
+    <span>Nuñez Martinez Valeria de la Caridad</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
