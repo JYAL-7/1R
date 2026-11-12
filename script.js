@@ -267,10 +267,11 @@ function graficaMulti(id, titulo, series, ejeX) {
   x.strokeStyle = '#2B1650'; x.lineWidth = 1.5;   // eje en cero
   x.beginPath(); x.moveTo(ml, Y(0)); x.lineTo(W - mr, Y(0)); x.stroke();
   series.forEach((s, k) => {                      // curvas
-    x.strokeStyle = s.color; x.lineWidth = 3; x.beginPath();
+    x.strokeStyle = s.color; x.lineWidth = 3; x.setLineDash(s.dash || []); x.beginPath();
     pts[k].forEach(([t, v], i) => i ? x.lineTo(X(t), Y(v)) : x.moveTo(X(t), Y(v)));
     x.stroke();
   });
+  x.setLineDash([]);
   x.fillStyle = '#2B1650'; x.textAlign = 'left'; x.font = '600 14px "IBM Plex Sans", sans-serif';
   x.fillText(titulo, ml, 22);
   x.font = '12px "IBM Plex Sans", sans-serif';
@@ -595,3 +596,239 @@ document.getElementById('cl-limpiar').addEventListener('click', () => {
   document.getElementById('cl-res').innerHTML = '';
   ocultarCl();
 });
+
+// ===== Ejercicio: colisión de dos proyectiles =====
+// Choque: misma x y misma y a la vez → v1·senθ1 = v2·senθ2 y t = d / (v1·cosθ1 + v2·cosθ2)
+const CPI = { v1: 'cp-v1', v2: 'cp-v2', d: 'cp-d', g: 'cp-g', a1: 'cp-a1', a2: 'cp-a2', t: 'cp-t', h: 'cp-h' };
+const CPEJEMPLO = { v1: 80, v2: 65, d: 500, g: 9.81, a1: 30, a2: '', t: '', h: '' };
+let cpEscs = [], cpK = null, animCp;
+
+function crearCol(v1, v2, th1, th2, d, g, nombre) {
+  const vx1 = v1 * Math.cos(th1), vy1 = v1 * Math.sin(th1), vx2 = v2 * Math.cos(th2), vy2 = v2 * Math.sin(th2);
+  const A = vx1 + vx2, B = vy1 - vy2, T1 = 2 * vy1 / g, T2 = 2 * vy2 / g;
+  // instante de mayor acercamiento mientras ambos siguen en el aire
+  const ts = Math.min(Math.max(d * A / (A * A + B * B), 0), Math.min(T1, T2));
+  const dmin = Math.hypot(d - A * ts, B * ts);
+  return { nombre, v1, v2, th1, th2, vx1, vy1, vx2, vy2, d, g, T1, T2, tc: ts, dmin, choque: dmin < 0.5,
+           xc: vx1 * ts, yc: vy1 * ts - 0.5 * g * ts * ts };
+}
+
+// o = {v1, v2, d, g, a1(°), a2(°), t, h} con undefined en lo que no se llenó
+function resolverCol(o) {
+  if (['v1', 'v2', 'd', 'g'].some(k => !(o[k] > 0))) throw 'Llena v1, v2, la separación d y la gravedad (obligatoria). Todos deben ser mayores que 0.';
+  const ex = ['a1', 'a2', 't', 'h'].filter(k => o[k] !== undefined);
+  if (!ex.length) throw 'Con esos datos solos el problema no tiene una única solución: falta una condición adicional. Llena θ1, θ2, el tiempo del choque o la altura del choque.';
+  for (const a of ['a1', 'a2']) if (o[a] !== undefined && !(o[a] > 0 && o[a] < 90)) throw 'Los ángulos deben estar entre 0° y 90°, sin incluirlos.';
+  if (o.t !== undefined && !(o.t > 0)) throw 'El tiempo del choque debe ser mayor que 0.';
+  if (o.h !== undefined && o.h < 0) throw 'La altura del choque no puede ser negativa.';
+  const { v1, v2, d, g } = o, vmin = Math.min(v1, v2);
+  if (ex.length === 2 && ex.includes('a1') && ex.includes('a2'))
+    return { k: 'ver', escs: [crearCol(v1, v2, o.a1 * RAD, o.a2 * RAD, d, g, 'Comprobación')] };
+  if (ex.length > 1) throw 'Llena solo una condición adicional (θ1, θ2, tiempo o altura). Si llenas los dos ángulos, el simulador comprueba si hay choque.';
+
+  const k = ex[0], S = vy => Math.sqrt(Math.max(0, v1 * v1 - vy * vy)) + Math.sqrt(Math.max(0, v2 * v2 - vy * vy));
+  let vys = [];   // componente vertical común de ambos proyectiles
+  if (k === 'a1' || k === 'a2') {
+    const vyD = (k === 'a1' ? v1 : v2) * Math.sin(o[k] * RAD), otra = k === 'a1' ? v2 : v1;
+    if (vyD > otra) throw `Con ese ángulo la componente vertical es ${fmt(vyD)} m/s, mayor que la rapidez del otro proyectil (${fmt(otra)} m/s): no puede igualar esa altura.`;
+    vys = [vyD];
+  } else if (k === 't') {
+    const meta = d / o.t, lo = Math.sqrt(Math.abs(v1 * v1 - v2 * v2)), hi = v1 + v2;
+    if (meta < lo - 1e-9 || meta > hi + 1e-9)
+      throw `Con esas rapideces el choque solo puede ocurrir entre ${fmt(d / hi)} s y ${lo > 0 ? fmt(d / lo) + ' s' : 'un tiempo sin límite'}.`;
+    let a = 0, b = vmin;
+    for (let j = 0; j < 80; j++) { const mid = (a + b) / 2; S(mid) > meta ? a = mid : b = mid; }
+    vys = [(a + b) / 2];
+  } else {        // k === 'h': buscar las componentes verticales cuya altura de choque es h
+    const yc = vy => { const t = d / S(vy); return vy * t - 0.5 * g * t * t; };
+    const N = 2000, tope = vmin * (1 - 1e-9);
+    let mejor = yc(0), vm = 0, prevV = 0, prevF = yc(0) - o.h;
+    for (let i = 1; i <= N; i++) {
+      const vy = tope * i / N, q = yc(vy), f = q - o.h;
+      if (q > mejor) { mejor = q; vm = vy; }
+      if ((prevF < 0 && f >= 0) || (prevF > 0 && f <= 0)) {
+        let a = prevV, b = vy;
+        for (let j = 0; j < 60; j++) { const mid = (a + b) / 2; (yc(a) - o.h) * (yc(mid) - o.h) <= 0 ? b = mid : a = mid; }
+        vys.push((a + b) / 2);
+      }
+      prevV = vy; prevF = f;
+    }
+    if (!vys.length) throw `Ningún choque ocurre a h = ${fmt(o.h)} m: con esas rapideces la mayor altura posible es ${fmt(mejor)} m (con una componente vertical de ${fmt(vm)} m/s).`;
+  }
+  const escs = vys.map((vy, i) => crearCol(v1, v2, Math.asin(Math.min(1, vy / v1)), Math.asin(Math.min(1, vy / v2)), d, g,
+    vys.length > 1 ? 'Solución ' + (i + 1) : 'Solución')).filter(e => e.choque);
+  if (!escs.length) throw 'Con esos datos los proyectiles caen al suelo antes de encontrarse. Prueba con más rapidez o menos separación.';
+  return { k, escs };
+}
+
+function ocultarCp() {
+  cancelAnimationFrame(animCp);
+  ['cp-anim', 'cp-graf', 'cp-sel'].forEach(i => document.getElementById(i).hidden = true);
+  ['cp-sol', 'cp-tabla'].forEach(i => document.getElementById(i).innerHTML = '');
+}
+function cargarEjemploCp() { for (const k in CPI) document.getElementById(CPI[k]).value = CPEJEMPLO[k]; }
+
+function calcCp() {
+  const o = {};
+  for (const k in CPI) o[k] = num(CPI[k]);
+  let r;
+  try { r = resolverCol(o); } catch (e) { ocultarCp(); return error('cp-res', String(e)); }
+  mostrarCp(r);
+}
+
+function mostrarCp(r) {
+  cpEscs = r.escs; cpK = r.k;
+  const e0 = r.escs[0];
+  let msg;
+  if (r.k === 'ver') msg = e0.choque ? '<p class="ok">Con esos ángulos los proyectiles sí chocan.</p>'
+    : `<p class="error">Con esos ángulos los proyectiles no chocan: su distancia mínima es ${fmt(e0.dmin)} m (a los ${fmt(e0.tc)} s).</p>`;
+  else msg = r.escs.length > 1 ? `<p class="ok">Hay ${r.escs.length} soluciones. Elige una para ver su simulación.</p>` : '<p class="ok">Los proyectiles chocan.</p>';
+  document.getElementById('cp-res').innerHTML = msg;
+  const sel = document.getElementById('cp-sel');
+  sel.hidden = r.escs.length < 2;
+  sel.innerHTML = r.escs.map((e, i) => `<button class="secundario" data-i="${i}">${e.nombre}: θ1 = ${fmt(e.th1 / RAD)}°, θ2 = ${fmt(e.th2 / RAD)}°</button>`).join('');
+  sel.querySelectorAll('button').forEach(b => b.addEventListener('click', () => verCp(+b.dataset.i)));
+  verCp(0);
+}
+
+function resumenCol(e) {
+  const filasR = [['Rapidez inicial (m/s)', e.v1, e.v2], ['Ángulo de lanzamiento (°)', e.th1 / RAD, e.th2 / RAD],
+    ['Componente horizontal (m/s)', e.vx1, e.vx2], ['Componente vertical (m/s)', e.vy1, e.vy2], ['Tiempo de vuelo total (s)', e.T1, e.T2]];
+  if (e.choque) filasR.push(['Tiempo hasta el choque (s)', e.tc, e.tc],
+    ['Posición horizontal al chocar (m)', e.vx1 * e.tc, e.d - e.vx2 * e.tc],
+    ['Altura al chocar (m)', e.vy1 * e.tc - 0.5 * e.g * e.tc ** 2, e.vy2 * e.tc - 0.5 * e.g * e.tc ** 2]);
+  return '<h4 class="sub" style="border-left:6px solid #6A32C9">Resumen</h4><div class="tabla-wrap"><table class="tabla resumen"><thead><tr><th>Magnitud</th><th>Proyectil 1</th><th>Proyectil 2</th></tr></thead><tbody>' +
+    filasR.map(r => `<tr><td>${r[0]}</td><td>${fmt(r[1])}</td><td>${fmt(r[2])}</td></tr>`).join('') + '</tbody></table></div>';
+}
+
+function tablaCol(e) {
+  const Tt = e.choque ? e.tc : Math.min(e.T1, e.T2);
+  let f = '';
+  for (let i = 0; i <= 10; i++) {
+    const t = Tt * i / 10, x1 = e.vx1 * t, y1 = Math.max(0, e.vy1 * t - 0.5 * e.g * t * t);
+    const x2 = e.d - e.vx2 * t, y2 = Math.max(0, e.vy2 * t - 0.5 * e.g * t * t);
+    f += `<tr><td>${fmt(t)}</td><td>${fmt(x1)}</td><td>${fmt(y1)}</td><td>${fmt(x2)}</td><td>${fmt(y2)}</td><td>${fmt(Math.hypot(x2 - x1, y2 - y1))}</td></tr>`;
+  }
+  return '<h3>Tabulación</h3><div class="tabla-wrap"><table class="tabla"><thead><tr>' +
+    '<th>t (s)</th><th>x₁ (m)</th><th>y₁ (m)</th><th>x₂ (m)</th><th>y₂ (m)</th><th>distancia entre ellos (m)</th>' +
+    `</tr></thead><tbody>${f}</tbody></table></div>`;
+}
+
+function verCp(i) {
+  const e = cpEscs[i], k = cpK;
+  document.querySelectorAll('#cp-sel button').forEach((b, j) => b.classList.toggle('activo', j === i));
+  const rows = [['Ángulo del proyectil 1 (θ1)', e.th1 / RAD, '°', k === 'a1' || k === 'ver'],
+                ['Ángulo del proyectil 2 (θ2)', e.th2 / RAD, '°', k === 'a2' || k === 'ver']];
+  if (e.choque) rows.push(['Tiempo del choque', e.tc, 's', k === 't'], ['Altura del choque', e.yc, 'm', k === 'h'],
+                          ['Posición horizontal del choque', e.xc, 'm']);
+  else rows.push(['Distancia mínima entre proyectiles', e.dmin, 'm'], ['Instante de mayor acercamiento', e.tc, 's']);
+  document.getElementById('cp-sol').innerHTML = filas(rows) + resumenCol(e);
+  const tg = e.choque ? Math.min(e.tc * 1.3, Math.min(e.T1, e.T2)) : Math.min(e.T1, e.T2);
+  document.getElementById('cp-graf').hidden = false;
+  graficaMulti('cp-g1', 'Altura (m) vs tiempo', [
+    { f: t => e.vy1 * t - 0.5 * e.g * t * t, T: tg, color: '#6A32C9', nombre: 'proyectil 1' },
+    { f: t => e.vy2 * t - 0.5 * e.g * t * t, T: tg, color: '#3DBE8B', nombre: 'proyectil 2', dash: [8, 6] }], 't (s)');
+  graficaMulti('cp-g2', 'Posición horizontal (m) vs tiempo', [
+    { f: t => e.vx1 * t, T: tg, color: '#6A32C9', nombre: 'proyectil 1' },
+    { f: t => e.d - e.vx2 * t, T: tg, color: '#3DBE8B', nombre: 'proyectil 2' }], 't (s)');
+  document.getElementById('cp-tabla').innerHTML = tablaCol(e);
+  document.getElementById('cp-anim').hidden = false;
+  animarColision(e);
+}
+
+function estrellaG(x, px, py, r, col) {
+  x.beginPath();
+  for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, rr = i % 2 ? r * 0.5 : r; x.lineTo(px + rr * Math.cos(a), py + rr * Math.sin(a)); }
+  x.closePath(); x.fillStyle = col; x.fill();
+}
+
+// Simulación: dos cañones frente a frente, trayectorias, choque y explosión
+function animarColision(e) {
+  const c = document.getElementById('cp-anim'), x = c.getContext('2d'), W = c.width, H = c.height, m = 50, suelo = 350;
+  const R1 = e.vx1 * e.T1, R2 = e.vx2 * e.T2, hm = Math.max(1, e.vy1 ** 2 / (2 * e.g), e.vy2 ** 2 / (2 * e.g));
+  const xmax = Math.max(e.d, R1), xmin = Math.min(0, e.d - R2);
+  const s = Math.min((W - 2 * m) / (xmax - xmin), (suelo - 80) / hm);
+  const X = u => m + (u - xmin) * s, Y = h => suelo - h * s;
+  const P1 = t => [X(e.vx1 * t), Y(e.vy1 * t - 0.5 * e.g * t * t)];
+  const P2 = t => [X(e.d - e.vx2 * t), Y(e.vy2 * t - 0.5 * e.g * t * t)];
+  const Tfin = e.choque ? e.tc * 1.25 : Math.max(e.T1, e.T2);
+  const raw = (xmax - xmin) / 8, pot = 10 ** Math.floor(Math.log10(raw));
+  const paso = [1, 2, 5, 10].map(q => q * pot).find(q => q >= raw);
+  const col1 = '#6A32C9', col2 = '#3DBE8B';
+  const traza = (P, hasta) => {
+    x.beginPath();
+    for (let i = 0; i <= 100; i++) { const [px, py] = P(hasta * i / 100); i ? x.lineTo(px, py) : x.moveTo(px, py); }
+    x.stroke();
+  };
+  const canon = (px, th, dir, col, txt) => {
+    const py = suelo - 16, co = Math.cos(th), si = Math.sin(th);
+    x.lineCap = 'round';
+    x.strokeStyle = '#2B1650'; x.lineWidth = 10; x.beginPath(); x.moveTo(px, py); x.lineTo(px + dir * 34 * co, py - 34 * si); x.stroke();
+    x.strokeStyle = col; x.lineWidth = 5; x.beginPath(); x.moveTo(px, py); x.lineTo(px + dir * 34 * co, py - 34 * si); x.stroke();
+    x.lineCap = 'butt';
+    flecha(x, px + dir * 38 * co, py - 38 * si, px + dir * 100 * co, py - 100 * si, col);
+    x.fillStyle = '#2B1650'; x.textAlign = dir > 0 ? 'left' : 'right';
+    x.fillText(txt, px + dir * 106 * co, py - 106 * si);
+    x.fillRect(px - 24, suelo - 16, 48, 16); x.beginPath(); x.arc(px, suelo - 16, 10, 0, 7); x.fill();
+  };
+
+  cancelAnimationFrame(animCp);
+  let ini = null;
+  function cuadro(ahora) {
+    if (ini === null) ini = ahora;
+    const f = Math.min((ahora - ini) / 6000, 1), t = Tfin * f, tt = e.choque ? Math.min(t, e.tc) : t;
+    x.clearRect(0, 0, W, H);
+    x.font = '13px "IBM Plex Mono", monospace';
+    // suelo, marcas en metros y separación inicial
+    x.fillStyle = '#58B88B'; x.fillRect(0, suelo, W, 18);
+    x.fillStyle = '#2B1650'; x.textAlign = 'center'; x.lineWidth = 1; x.strokeStyle = '#2B1650';
+    for (let u = Math.ceil(xmin / paso) * paso; u <= xmax + 1e-9; u += paso) {
+      x.beginPath(); x.moveTo(X(u), suelo + 18); x.lineTo(X(u), suelo + 24); x.stroke();
+      x.fillText(fmt(+u.toPrecision(6)), X(u), suelo + 38);
+    }
+    const ya = suelo + 62, xm = (X(0) + X(e.d)) / 2;
+    flecha(x, xm, ya, X(0), ya, '#2B1650'); flecha(x, xm, ya, X(e.d), ya, '#2B1650');
+    x.fillText('separación inicial = ' + fmt(e.d) + ' m', xm, ya + 20);
+    // cañones
+    canon(X(0), e.th1, 1, col1, 'θ1 = ' + fmt(e.th1 / RAD) + '°');
+    canon(X(e.d), e.th2, -1, col2, 'θ2 = ' + fmt(e.th2 / RAD) + '°');
+    // trayectorias y proyectiles
+    [[P1, e.T1, col1], [P2, e.T2, col2]].forEach(([P, T, col]) => {
+      x.strokeStyle = col; x.lineWidth = 2; x.globalAlpha = 0.45; x.setLineDash([6, 6]); traza(P, T);
+      x.setLineDash([]); x.globalAlpha = 1;
+      x.lineWidth = 3; traza(P, Math.min(tt, T));
+      if (t < T && !(e.choque && t >= e.tc)) {
+        const [px, py] = P(t);
+        x.fillStyle = col; x.beginPath(); x.arc(px, py, 7, 0, 7); x.fill();
+        x.strokeStyle = '#2B1650'; x.lineWidth = 2; x.stroke();
+      } else if (!e.choque) {
+        const [px, py] = P(T);
+        x.fillStyle = col; x.beginPath(); x.arc(px, suelo - 4, 6, 0, 7); x.fill();
+      }
+    });
+    if (e.choque && t >= e.tc) {
+      const [px, py] = P1(e.tc), r = 16 + 12 * Math.min(1, (t - e.tc) / (0.1 * Tfin));
+      estrellaG(x, px, py, r, '#F59E0B'); estrellaG(x, px, py, r * 0.55, '#FDE047');
+    }
+    // datos en vivo y leyenda
+    const y1 = Math.max(0, e.vy1 * tt - 0.5 * e.g * tt * tt), y2 = Math.max(0, e.vy2 * tt - 0.5 * e.g * tt * tt);
+    const dist = Math.hypot(e.d - (e.vx1 + e.vx2) * tt, y2 - y1);
+    x.fillStyle = '#2B1650'; x.textAlign = 'left';
+    x.fillText('t = ' + fmt(tt) + ' s   distancia entre proyectiles = ' + fmt(dist) + ' m', 12, 22);
+    x.textAlign = 'right';
+    x.fillStyle = col1; x.fillText('● proyectil 1 (v = ' + fmt(e.v1) + ' m/s)', W - 12, 22);
+    x.fillStyle = col2; x.fillText('● proyectil 2 (v = ' + fmt(e.v2) + ' m/s)', W - 12, 42);
+    if (f < 1) animCp = requestAnimationFrame(cuadro);
+  }
+  animCp = requestAnimationFrame(cuadro);
+}
+
+document.getElementById('cp-calc').addEventListener('click', calcCp);
+document.getElementById('cp-ejemplo').addEventListener('click', () => { cargarEjemploCp(); calcCp(); });
+document.getElementById('cp-limpiar').addEventListener('click', () => {
+  for (const k in CPI) document.getElementById(CPI[k]).value = k === 'g' ? 9.81 : '';
+  document.getElementById('cp-res').innerHTML = '';
+  ocultarCp();
+});
+// Al abrir el ejercicio desde la lista, se carga el ejemplo y se muestra todo de nuevo
+document.getElementById('ej-colision').addEventListener('abrir', () => { cargarEjemploCp(); calcCp(); });

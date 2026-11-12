@@ -10,7 +10,7 @@
 </head>
 <body>
   <header>
-    <h1>Laboratorio de Cinemática        Grupo: 603</h1>
+    <h1>Laboratorio de Cinemática 603</h1>
     <nav id="menu" aria-label="Secciones">
       <button data-sec="intro" class="activo">Introducción</button>
       <span class="sep" aria-hidden="true"></span>
@@ -50,7 +50,7 @@
         <button class="tarjeta" data-ir="mua"><strong>MUA</strong><span>Aceleración constante.</span><code>vf = v0 + a·t</code><code>d = v0·t + ½·a·t²</code></button>
         <button class="tarjeta" data-ir="caida"><strong>Caída libre</strong><span>MUA con a = g. Si se deja caer, v0 = 0.</span><code>vf = g·t</code><code>h = ½·g·t²</code></button>
         <button class="tarjeta" data-ir="parabolico"><strong>Tiro parabólico</strong><span>Lanzamiento con ángulo bajo la gravedad.</span><code>x = vx·t</code><code>y = h0 + vy·t − ½·g·t²</code></button>
-        <button class="tarjeta" data-ir="ejercicios"><strong>Ejercicios</strong><span>Problemas completos con dibujo, gráficas y tabla.</span><code>Cañón y tanque</code></button>
+        <button class="tarjeta" data-ir="ejercicios"><strong>Ejercicios</strong><span>Problemas completos con dibujo, gráficas y tabla.</span><code>Cañón y tanque</code><code>Colisión de dos proyectiles</code></button>
       </div>
     </section>
 
@@ -140,6 +140,7 @@
       <p>Elige un ejercicio. Al abrirlo verás el dibujo animado, los campos para tus datos, las gráficas y una tabla de valores.</p>
       <div class="tarjetas">
         <button class="tarjeta" data-ir="ej-tanque"><strong>Cañón y tanque</strong><span>Un proyectil contra un tanque que se aproxima: calcula los dos ángulos de impacto.</span><code>(v0·cosθ + vt)·2·v0·senθ / g = d</code></button>
+        <button class="tarjeta" data-ir="ej-colision"><strong>Colisión de dos proyectiles</strong><span>Dos proyectiles salen a la vez, uno hacia el otro: calcula ángulos, tiempo y punto del choque.</span><code>v1·senθ1 = v2·senθ2</code></button>
       </div>
     </section>
 
@@ -170,11 +171,47 @@
       </div>
       <div id="et-tabla"></div>
     </section>
+
+    <!-- EJERCICIO: COLISIÓN DE DOS PROYECTILES -->
+    <section id="ej-colision" class="seccion" data-menu="ejercicios">
+      <button class="secundario volver" data-ir="ejercicios">← Volver a ejercicios</button>
+      <h2>Colisión de dos proyectiles</h2>
+      <p>Dos proyectiles salen a la vez desde el suelo, separados una distancia d, y cada uno se lanza hacia el otro. Los ángulos se miden hacia arriba desde la horizontal que apunta al otro proyectil. Chocan cuando coinciden en x y en y en el mismo instante:</p>
+      <p class="formulas"><code>v1·senθ1 = v2·senθ2</code> &nbsp;(misma altura)<br><code>t = d / (v1·cosθ1 + v2·cosθ2)</code> &nbsp;(misma posición horizontal)</p>
+      <p>Solo con las rapideces y la distancia el problema <strong>no tiene una única solución</strong>, porque la primera ecuación deja un ángulo libre. Por eso hace falta <strong>una condición adicional</strong>: llena solo una de las cuatro de abajo. Si llenas los dos ángulos, el simulador comprueba si hay choque.</p>
+      <div class="campos">
+        <label>Rapidez del proyectil 1, v1 (m/s) <input id="cp-v1" type="number" step="any"></label>
+        <label>Rapidez del proyectil 2, v2 (m/s) <input id="cp-v2" type="number" step="any"></label>
+        <label>Separación inicial d (m) <input id="cp-d" type="number" step="any"></label>
+        <label>Gravedad g (m/s²), obligatoria <input id="cp-g" type="number" step="any"></label>
+      </div>
+      <h3>Condición adicional (llena solo una)</h3>
+      <div class="campos">
+        <label>Ángulo del proyectil 1, θ1 (°) <input id="cp-a1" type="number" step="any"></label>
+        <label>Ángulo del proyectil 2, θ2 (°) <input id="cp-a2" type="number" step="any"></label>
+        <label>Tiempo del choque t (s) <input id="cp-t" type="number" step="any"></label>
+        <label>Altura del choque h (m) <input id="cp-h" type="number" step="any"></label>
+      </div>
+      <div class="acciones">
+        <button class="primario" id="cp-calc">Calcular</button>
+        <button class="secundario" id="cp-ejemplo">Cargar ejemplo</button>
+        <button class="secundario" id="cp-limpiar">Limpiar</button>
+      </div>
+      <div class="resultado" id="cp-res"></div>
+      <div class="selector" id="cp-sel" hidden></div>
+      <canvas id="cp-anim" width="900" height="440" aria-label="Simulación de la colisión de dos proyectiles" hidden></canvas>
+      <div class="resultado" id="cp-sol"></div>
+      <div class="graficas" id="cp-graf" hidden>
+        <canvas id="cp-g1" width="420" height="290" aria-label="Altura contra tiempo"></canvas>
+        <canvas id="cp-g2" width="420" height="290" aria-label="Posición horizontal contra tiempo"></canvas>
+      </div>
+      <div id="cp-tabla"></div>
+    </section>
   </main>
 
   <footer>
     <strong>Hecho por:</strong>
-    <span>Alarcon Lucas Julio Yamil</span>
+    <span>Alardcon Lucas Julio Yamil</span>
     <span>Flores Arias Maximiliano</span>
     <span>Nuñez Martinez Valeria de la Caridad</span>
   </footer>
